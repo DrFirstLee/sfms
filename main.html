@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SFMS 관리자 페이지</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <nav class="sidebar">
+            <h3>SFMS Admin</h3>
+            <ul>
+                <li onclick="showPage('info')" class="active" id="menu-info">가입정보 관리</li>
+                <li onclick="showPage('message')" id="menu-message">메시지 보내기</li>
+            </ul>
+            <div class="logout-area">
+                <a href="index.html">로그아웃</a>
+            </div>
+        </nav>
+
+        <main class="content">
+
+            <div id="page-info" class="page-section">
+                <h2>가입정보 관리</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>기관 구분</th>
+                                <th>기관명</th>
+                                <th>담당자 직책</th>
+                                <th>지역</th>
+                                <th>가입일시</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="page-message" class="page-section" style="display: none;">
+                <h2>메시지 보내기</h2>
+
+                <div class="message-layout">
+                    <div class="filter-box">
+                        <h3>고객 필터링</h3>
+                        <div class="filter-row">
+                            <select id="filter-region" onchange="updateTargetList()">
+                                <option value="">전체 지역</option>
+                                <option value="송파">송파</option>
+                                <option value="잠실">잠실</option>
+                                <option value="서초">서초</option>
+                                <option value="서대문">서대문</option>
+                                <option value="종로">종로</option>
+                            </select>
+                            <select id="filter-type" onchange="updateTargetList()">
+                                <option value="">전체 기관</option>
+                                <option value="어린이집">어린이집</option>
+                                <option value="구청">구청</option>
+                                <option value="시설물">시설물</option>
+                            </select>
+                            <select id="filter-role" onchange="updateTargetList()">
+                                <option value="">전체 직책</option>
+                                <option value="안전담당자">안전담당자</option>
+                                <option value="원장">원장</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="target-result-box">
+                        <h3>
+                            발송 대상 리스트
+                            <span id="target-count" class="badge">0명</span>
+                        </h3>
+                        <ul id="target-list" class="target-list">
+                        </ul>
+                    </div>
+
+                    <div class="message-box">
+                        <h3>카카오톡 알림톡 발송</h3>
+                        <div class="input-group">
+                            <label>메시지 제목</label>
+                            <input type="text" id="msg-title" placeholder="제목을 입력하세요 (예: 긴급 점검 안내)">
+                        </div>
+                        <div class="input-group">
+                            <label>메시지 본문</label>
+                            <textarea id="msg-body" rows="6" placeholder="내용을 입력하세요..."></textarea>
+                        </div>
+                        <button class="btn-send" onclick="sendMessage()">보내기</button>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        // --- 1. 데이터 정의 (하드코딩) ---
+        const mockData = [
+            { no: 1, type: '어린이집', name: '햇살어린이집', role: '원장', region: '송파', date: '2024-01-10 10:00' },
+            { no: 2, type: '구청', name: '송파구청', role: '안전담당자', region: '송파', date: '2024-01-12 14:30' },
+            { no: 3, type: '시설물', name: '올림픽공원 관리소', role: '안전담당자', region: '잠실', date: '2024-02-01 09:00' },
+            { no: 4, type: '어린이집', name: '반포어린이집', role: '원장', region: '서초', date: '2024-02-15 11:20' },
+            { no: 5, type: '구청', name: '서대문구청', role: '안전담당자', region: '서대문', date: '2024-03-05 16:45' },
+            { no: 6, type: '시설물', name: '광화문 시설관리공단', role: '안전담당자', region: '종로', date: '2024-03-20 13:10' },
+        ];
+
+        // --- 2. 초기화 및 테이블 렌더링 ---
+        const tableBody = document.getElementById('userTableBody');
+
+        mockData.forEach(user => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${user.no}</td>
+                <td>${user.type}</td>
+                <td>${user.name}</td>
+                <td>${user.role}</td>
+                <td>${user.region}</td>
+                <td>${user.date}</td>
+            `;
+            tableBody.appendChild(tr);
+        });
+
+        // --- 3. 페이지 전환 함수 ---
+        function showPage(pageName) {
+            document.getElementById('page-info').style.display = 'none';
+            document.getElementById('page-message').style.display = 'none';
+            document.getElementById('menu-info').classList.remove('active');
+            document.getElementById('menu-message').classList.remove('active');
+
+            document.getElementById('page-' + pageName).style.display = 'block';
+            document.getElementById('menu-' + pageName).classList.add('active');
+
+            // 메시지 페이지 진입 시 리스트 초기화
+            if (pageName === 'message') {
+                updateTargetList();
+            }
+        }
+
+        // --- 4. [NEW] 대상 리스트 업데이트 함수 ---
+        function updateTargetList() {
+            const regionVal = document.getElementById('filter-region').value;
+            const typeVal = document.getElementById('filter-type').value;
+            const roleVal = document.getElementById('filter-role').value;
+
+            // 필터 로직
+            const filteredData = mockData.filter(item => {
+                const matchRegion = regionVal === "" || item.region === regionVal;
+                const matchType = typeVal === "" || item.type === typeVal;
+                const matchRole = roleVal === "" || item.role === roleVal;
+                return matchRegion && matchType && matchRole;
+            });
+
+            // UI 업데이트
+            const listEl = document.getElementById('target-list');
+            const countEl = document.getElementById('target-count');
+
+            listEl.innerHTML = ""; // 초기화
+            countEl.textContent = `${filteredData.length}명`;
+
+            if (filteredData.length === 0) {
+                listEl.innerHTML = "<li class='no-data'>조건에 맞는 대상이 없습니다.</li>";
+                return;
+            }
+
+            filteredData.forEach(item => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span class="tag tag-region">${item.region}</span>
+                    <span class="tag tag-type">${item.type}</span>
+                    <strong>${item.name}</strong> 
+                    <span class="text-gray">(${item.role})</span>
+                `;
+                listEl.appendChild(li);
+            });
+        }
+
+        // --- 5. 메시지 발송 함수 ---
+        function sendMessage() {
+            const title = document.getElementById('msg-title').value;
+            const countText = document.getElementById('target-count').textContent;
+
+            if (countText === "0명") {
+                alert("발송 대상이 없습니다. 필터 조건을 확인해주세요.");
+                return;
+            }
+
+            if (!title) {
+                alert('메시지 제목을 입력해주세요.');
+                return;
+            }
+
+            alert(`[발송 성공]\n총 ${countText}에게 메시지를 전송했습니다.\n제목: ${title}`);
+        }
+    </script>
+</body>
+
+</html>
