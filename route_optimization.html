@@ -413,11 +413,15 @@
                 return false;
             }
 
-            const url = `https://maps.apigw.ntruss.com/map-geocode/v2/geocode?query=${encodeURIComponent(address)}`;
+            // 원본 Naver API URL
+            const targetUrl = `https://maps.apigw.ntruss.com/map-geocode/v2/geocode?query=${encodeURIComponent(address)}`;
+
+            // Netlify Proxy를 통한 호출 (CORS 해결)
+            const proxyUrl = `/.netlify/functions/proxy?url=${encodeURIComponent(targetUrl)}`;
 
             try {
                 const response = await $.ajax({
-                    url: url,
+                    url: proxyUrl, // Proxy URL 사용
                     method: 'GET',
                     headers: {
                         'x-ncp-apigw-api-key-id': clientId,
