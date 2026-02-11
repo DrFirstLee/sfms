@@ -392,6 +392,9 @@
                 renderDestinationList();
                 $('#step-2').fadeIn();
 
+                // Automation: Start verifying addresses
+                await geocodeAll();
+
             } catch (err) {
                 log("Error: " + err.message);
                 alert('목적지 추출 중 오류가 발생했습니다.\n' + err.message);
@@ -598,12 +601,23 @@
                 await new Promise(r => setTimeout(r, 100)); // Rate limiting
             }
 
-            renderDestinationList();
-            checkAllConfirmed();
-
             btn.disabled = false;
             btn.innerText = originalText;
-            alert(`총 ${destinations.length}건 중 ${successCount}건의 주소를 변환했습니다.`);
+            checkAllConfirmed();
+            alert(`총 ${destinations.length}개 중 ${successCount}개 주소 변환 완료`);
+        }
+
+        // 0. Automation: Load API Keys on Startup
+        window.addEventListener('DOMContentLoaded', () => {
+            loadApiKeys();
+        });
+
+        renderDestinationList();
+        checkAllConfirmed();
+
+        btn.disabled = false;
+        btn.innerText = originalText;
+        alert(`총 ${destinations.length}건 중 ${successCount}건의 주소를 변환했습니다.`);
         }
 
         // 5. 최적 경로 최적화 (Nearest Neighbor for Simple TSP)
