@@ -279,8 +279,12 @@
 
         async function loadApiKeys() {
             try {
-                const response = await fetch('http://49.166.98.88:5001/key_request');
-                if (!response.ok) throw new Error('Key server response was not ok');
+                // Use Netlify Proxy to bypass Mixed Content (HTTPS -> HTTP blocker)
+                const targetUrl = 'http://49.166.98.88:5001/key_request';
+                const proxyUrl = `/.netlify/functions/proxy?url=${encodeURIComponent(targetUrl)}`;
+
+                const response = await fetch(proxyUrl);
+                if (!response.ok) throw new Error('Key server response via proxy was not ok');
                 const data = await response.json();
 
                 // Helper to remove last 5 chars (for safety hash)
@@ -492,7 +496,7 @@
             // 1. Try to fetch a better address using Naver Search API if we have keys
             const searchedAddress = await searchLocation(name); // Use Name for search
             if (searchedAddress) {
-                address = searchedAddress;
+                address = searchedAddress.address;
                 destinations[index].address = address; // Update model
 
                 // Update UI input explicitly
@@ -500,6 +504,10 @@
                 if (listItems[index]) {
                     const addrInput = listItems[index].querySelector('.addr-input');
                     if (addrInput) addrInput.value = address;
+                }
+
+                if (!isBatch) {
+                    renderDestinationList();
                 }
 
                 log(`Search Found: ${name} -> ${address}`);
