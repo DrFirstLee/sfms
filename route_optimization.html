@@ -178,7 +178,7 @@
             <h2>노선 최적화 (Route Optimization)</h2>
 
             <!-- API Configuration -->
-            <div class="api-settings">
+            <div class="api-settings" style="display:none;">
                 <h4>API 설정 (필수)</h4>
                 <div class="api-input-group">
                     <div>
@@ -829,8 +829,11 @@
             - 총 거리: ${distKm}km
             - 예상 시간: ${durMin}분
             
-            위 정보를 바탕으로 사용자에게 친절하게 경로를 요약해주는 한 문장의 멘트를 작성해줘.
-            예시: "${start}에서 출발하여 ${waypoints}를 거쳐 ${end}로 가는 최적 경로를 추천합니다! 총 ${distKm}km 이동하며 약 ${durMin}분이 소요됩니다."
+            위 정보를 바탕으로 사용자에게 친절하게 경로를 요약해주는 문장의 멘트를 줄바꿈과 이모지를 사용하며 가시성 좋게 작성해줘.
+            예시: "${start}에서 출발,
+            ${waypoints}를 거쳐,
+            ${end}로 가는 최적 경로를 추천합니다!
+            총 ${distKm}km 이동하며 약 ${durMin}분이 소요됩니다."
             말투는 정중하고 친절하게 해줘.
             `;
 
@@ -848,8 +851,7 @@
                         messages: [
                             { role: "system", content: "You are a helpful navigation assistant." },
                             { role: "user", content: prompt }
-                        ],
-                        max_tokens: 100
+                        ]
                     })
                 });
 
