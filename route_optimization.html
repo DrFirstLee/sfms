@@ -575,25 +575,26 @@
             const goalStr = `${goal.lng},${goal.lat}`;
 
             // Waypoints (Middle) - Directions 15 supports max 5 via pipe
-            // If more than 5, we'll just send first 5 (limitation of demo)
             let waypoints = [];
             for (let i = 1; i < destinations.length - 1; i++) {
                 waypoints.push(`${destinations[i].lng},${destinations[i].lat}`);
             }
-            // Directions 15 waypoints format: lon,lat|lon,lat|...
             const waypointsStr = waypoints.join('|');
 
-            // Directions 15 URL
-            let url = `https://maps.apigw.ntruss.com/map-direction-15/v1/driving?start=${startStr}&goal=${goalStr}&option=traoptimal`;
+            // Original Directions 15 URL
+            let targetUrl = `https://maps.apigw.ntruss.com/map-direction-15/v1/driving?start=${startStr}&goal=${goalStr}&option=traoptimal`;
             if (waypointsStr) {
-                url += `&waypoints=${waypointsStr}`;
+                targetUrl += `&waypoints=${waypointsStr}`;
             }
 
-            log("Calling Directions 15: " + url);
+            // Proxy URL
+            const proxyUrl = `/.netlify/functions/proxy?url=${encodeURIComponent(targetUrl)}`;
+
+            log("Calling Directions 15 via Proxy: " + targetUrl);
 
             try {
                 await $.ajax({
-                    url: url,
+                    url: proxyUrl,
                     method: 'GET',
                     headers: {
                         'x-ncp-apigw-api-key-id': clientId,
@@ -623,13 +624,13 @@
                             map.fitBounds(bounds);
 
                         } else {
-                            log("Driving Info: " + data.message);
+                            log("Driving Info: " + (data.message || JSON.stringify(data)));
                             alert("경로 찾기 실패: " + (data.message || "Unknown error"));
                         }
                     },
                     error: function (err) {
                         log("Driving API Error: " + JSON.stringify(err));
-                        alert("Driving 15 API 호출 실패 (CORS 확인 필요). 직선으로 표시합니다.");
+                        alert("Driving 15 API 호출 실패. (CORS 문제일 수 있습니다. 배포 후 확인하세요.)");
                         drawDirectLines();
                     }
                 });
