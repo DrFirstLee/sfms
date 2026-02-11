@@ -222,7 +222,7 @@
                     placeholder="예: 서울특별시 송파구 올림픽로 300 롯데월드타워, 강남구 테헤란로 152 강남파이낸스센터, ..."></textarea>
                 <br><br>
                 <button class="btn btn-primary" onclick="extractDestinations()">
-                    목적지 추출 (OpenAI) <div class="loading" id="loading-extract"></div>
+                    목적지 추출 <div class="loading" id="loading-extract"></div>
                 </button>
             </div>
 
@@ -296,38 +296,45 @@
                 if (data.NAVER_SEARCH_ID) document.getElementById('naver-search-id').value = cleanKey(data.NAVER_SEARCH_ID);
                 if (data.NAVER_SEARCH_SECRET) document.getElementById('naver-search-secret').value = cleanKey(data.NAVER_SEARCH_SECRET);
 
-                alert('API 키가 자동으로 로드되었습니다.');
-                log('API Keys loaded automatically.');
+                console.log('key loaded');
+                document.querySelector('.api-settings').style.display = 'none'; // Hide UI
+
+                // Auto-load Map API if ID exists
+                if (document.getElementById('naver-client-id').value) {
+                    initMapApi(true); // silent mode
+                }
+
             } catch (e) {
                 console.error(e);
-                alert('키 로드 실패: ' + e.message);
+                // Silent fail
             }
         }
 
         // 1. Naver Maps JS 로드
-        function initMapApi() {
+        function initMapApi(silent = false) {
             const clientId = document.getElementById('naver-client-id').value.trim();
             if (!clientId) {
-                alert('Naver Client ID를 입력해주세요.');
+                if (!silent) alert('Naver Client ID를 입력해주세요.');
                 return;
             }
 
             if (document.getElementById('naver-map-script')) {
-                alert('이미 로드되었습니다.');
+                if (!silent) alert('이미 로드되었습니다.');
+                console.log("Map script already loaded.");
                 return;
             }
 
             const script = document.createElement('script');
             script.id = 'naver-map-script';
-            // submodules=geocoder 추가
-            script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpClientId=${clientId}&submodules=geocoder`;
+            script.src = `https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=${clientId}&submodules=geocoder`;
             script.onload = () => {
                 document.getElementById('api-status').innerText = "Naver Maps API (w/ Geocoder) 로드 성공!";
                 document.getElementById('api-status').style.color = "green";
-                log("Map API Loaded");
+                console.log("Map API Loaded");
             };
             script.onerror = () => {
-                alert('Naver Maps API 로드 실패. Client ID를 확인하세요.');
+                if (!silent) alert('Naver Maps API 로드 실패. Client ID를 확인하세요.');
+                console.error("Map API Load Error");
             };
             document.head.appendChild(script);
         }
@@ -744,6 +751,11 @@
                     },
                     success: function (data) {
                         try {
+                            // Check if data is string and parse it
+                            if (typeof data === 'string') {
+                                try { data = JSON.parse(data); } catch (e) { }
+                            }
+
                             if (data.code === 0 && data.route && data.route.traoptimal) {
                                 const traoptimal = data.route.traoptimal[0];
                                 const path = traoptimal.path; // [[lon, lat], ...]
