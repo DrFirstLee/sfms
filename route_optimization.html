@@ -215,7 +215,18 @@
             <!-- Step 2: Verification -->
             <div class="step-container" id="step-2" style="display:none;">
                 <h3>2. 주소 확인 및 검증</h3>
-                <p>각 장소의 주소가 맞는지 확인하고 '주소검색' 버튼을 눌러 좌표를 불러오세요.</p>
+                <p>장소명(예: 강동구청)만 있어도 '주소검증'을 통해 정확한 주소로 변환할 수 있습니다.</p>
+
+                <div style="margin-bottom:10px;">
+                    <button class="btn btn-warning" id="btn-verify-all" onclick="geocodeAll()"
+                        style="background-color:#f39c12; color:white;">
+                        모두 주소 검증하기 (일괄 변환)
+                    </button>
+                    <span style="font-size:12px; color:#666; margin-left:10px;">* 리스트의 모든 항목에 대해 주소를 검색하여 좌표를
+                        갱신합니다.</span>
+                </div>
+
+
 
                 <ul id="dest-list" class="destination-list">
                     <!-- Items inserted here -->
@@ -298,7 +309,7 @@
                         'Authorization': `Bearer ${apiKey}`
                     },
                     body: JSON.stringify({
-                        model: "gpt-4o-mini",
+                        model: "gpt-5-nano-2025-08-07",
                         messages: [
                             {
                                 role: "system",
@@ -384,49 +395,72 @@
         }
 
         // 4. Geocoding (Naver REST API v2)
-        async function geocodeItem(index) {
+        async function geocodeItem(index, isBatch = false) {
             const clientId = document.getElementById('naver-client-id').value.trim();
             const clientSecret = document.getElementById('naver-client-secret').value.trim();
             const address = destinations[index].address;
 
             if (!clientId || !clientSecret) {
-                alert('Geocoding을 위해서는 Client ID와 Secret이 모두 필요합니다.');
-                return;
+                if (!isBatch) alert('Geocoding을 위해서는 Client ID와 Secret이 모두 필요합니다.');
+                return false;
             }
 
             const url = `https://maps.apigw.ntruss.com/map-geocode/v2/geocode?query=${encodeURIComponent(address)}`;
 
             try {
-                await $.ajax({
+                const response = await $.ajax({
                     url: url,
                     method: 'GET',
                     headers: {
                         'x-ncp-apigw-api-key-id': clientId,
                         'x-ncp-apigw-api-key': clientSecret,
                         'Accept': 'application/json'
-                    },
-                    success: function (data) {
-                        if (data.status === "OK" && data.addresses && data.addresses.length > 0) {
-                            const result = data.addresses[0];
-                            destinations[index].lat = parseFloat(result.y);
-                            destinations[index].lng = parseFloat(result.x);
-                            destinations[index].address = result.roadAddress || result.jibunAddress;
-                            destinations[index].confirmed = true;
-                            renderDestinationList();
-                            log(`Geocoded: ${address} -> ${result.x}, ${result.y}`);
-                        } else {
-                            alert('주소를 찾을 수 없습니다.');
-                            log("Geocode Data: " + JSON.stringify(data));
-                        }
-                    },
-                    error: function (xhr, status, error) {
-                        log("Geocode Error: " + error);
-                        alert('Geocoding API 호출 실패. \n(CORS 에러가 발생하면 로컬 개발 환경에서 CORS를 무시하거나 프록시를 사용해야 합니다.)');
                     }
                 });
+
+                if (response.status === "OK" && response.addresses && response.addresses.length > 0) {
+                    const result = response.addresses[0];
+                    destinations[index].lat = parseFloat(result.y);
+                    destinations[index].lng = parseFloat(result.x);
+                    destinations[index].address = result.roadAddress || result.jibunAddress;
+                    destinations[index].confirmed = true;
+
+                    if (!isBatch) {
+                        renderDestinationList();
+                        log(`Geocoded: ${address} -> ${destinations[index].address}`);
+                    }
+                    return true;
+                } else {
+                    if (!isBatch) alert(`'${address}'에 대한 검색 결과가 없습니다.`);
+                    log(`Geocode Failed for: ${address}`);
+                    return false;
+                }
             } catch (e) {
                 log("Error: " + e.message);
+                if (!isBatch) alert('Geocoding Error');
+                return false;
             }
+        }
+
+        async function geocodeAll() {
+            const btn = document.getElementById('btn-verify-all');
+            const originalText = btn.innerText;
+            btn.disabled = true;
+            btn.innerText = "주소 변환 중...";
+
+            let successCount = 0;
+            for (let i = 0; i < destinations.length; i++) {
+                const success = await geocodeItem(i, true);
+                if (success) successCount++;
+                await new Promise(r => setTimeout(r, 100)); // Rate limiting
+            }
+
+            renderDestinationList();
+            checkAllConfirmed();
+
+            btn.disabled = false;
+            btn.innerText = originalText;
+            alert(`총 ${destinations.length}건 중 ${successCount}건의 주소를 변환했습니다.`);
         }
 
         // 5. 최적 경로 최적화 (Nearest Neighbor for Simple TSP)
@@ -597,18 +631,40 @@
             }
         }
 
-        function drawDirectLines() {
-            const pathCoords = destinations.map(d => new naver.maps.LatLng(d.lat, d.lng));
-            if (polyline) polyline.setMap(null);
-            polyline = new naver.maps.Polyline({
-                map: map,
-                path: pathCoords,
-                strokeColor: "#999",
-                strokeStyle: 'dot',
-                strokeWeight: 4
-            });
-            $('#route-info').text("직선 경로 표시 (API 호출 실패)");
+        // .env 파일 로드 함수
+        async function loadEnv() {
+            try {
+                const response = await fetch('./.env');
+                if (!response.ok) throw new Error('Cannot load .env file');
+                const text = await response.text();
+
+                const lines = text.split('\n');
+                lines.forEach(line => {
+                    const [key, ...obj] = line.split('=');
+                    if (key && obj) {
+                        const value = obj.join('=').trim();
+                        if (key.trim() === 'OPENAPI_KEY') {
+                            document.getElementById('openai-key').value = value;
+                        } else if (key.trim() === 'NAVER_CLIENT_ID') {
+                            document.getElementById('naver-client-id').value = value;
+                        } else if (key.trim() === 'NAVER_CLIENT_SECRET') {
+                            document.getElementById('naver-client-secret').value = value;
+                        }
+                    }
+                });
+                log(".env loaded successfully");
+            } catch (e) {
+                log("Failed to load .env (Requires Web Server): " + e.message);
+                // Fallback: If fetch fails, we can't do anything in purely client-side static HTML
+                // unless we use a build process or the user manually enters keys.
+            }
         }
+
+        // 페이지 로드 시 .env 불러오기 시도
+        window.onload = function () {
+            loadEnv();
+        };
+
     </script>
 </body>
 
