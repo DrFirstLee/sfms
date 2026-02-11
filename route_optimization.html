@@ -256,6 +256,9 @@
                 <h3>3. 최적 경로 지도</h3>
                 <div id="map" class="map-container"></div>
                 <div id="route-info" style="margin-top:10px; font-weight:bold;"></div>
+                <div id="ai-comment"
+                    style="margin-top:10px; padding:10px; background:#f0f8ff; border-radius:5px; color:#333; font-size:14px; display:none;">
+                </div>
             </div>
 
             <!-- Debug Log -->
@@ -779,6 +782,10 @@
                                 const durMin = (summary.duration / 60000).toFixed(0);
                                 $('#route-info').text(`총 거리: ${distKm}km, 예상 시간: ${durMin}분 (Directions 15)`);
 
+                                // Generate AI Comment (updated)
+                                const orderedNames = destinations.map(d => d.name);
+                                generateRouteComment(orderedNames, distKm, durMin);
+
                                 // Fit bounds to show entire route
                                 if (pathCoords.length > 0) {
                                     const bounds = new naver.maps.LatLngBounds();
@@ -803,6 +810,57 @@
             } catch (e) {
                 console.error(e);
                 drawDirectLines();
+            }
+        }
+
+        async function generateRouteComment(names, distKm, durMin) {
+            const apiKey = document.getElementById('openai-key').value.trim();
+            if (!apiKey) return;
+
+            const start = names[0];
+            const end = names[names.length - 1];
+            const waypoints = names.slice(1, names.length - 1).join(', ');
+
+            const prompt = `
+            경로 정보:
+            - 출발지: ${start}
+            - 경유지: ${waypoints}
+            - 도착지: ${end}
+            - 총 거리: ${distKm}km
+            - 예상 시간: ${durMin}분
+            
+            위 정보를 바탕으로 사용자에게 친절하게 경로를 요약해주는 한 문장의 멘트를 작성해줘.
+            예시: "${start}에서 출발하여 ${waypoints}를 거쳐 ${end}로 가는 최적 경로를 추천합니다! 총 ${distKm}km 이동하며 약 ${durMin}분이 소요됩니다."
+            말투는 정중하고 친절하게 해줘.
+            `;
+
+            $('#ai-comment').text("AI가 경로를 분석중입니다...").show();
+
+            try {
+                const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: "gpt-4o-mini",
+                        messages: [
+                            { role: "system", content: "You are a helpful navigation assistant." },
+                            { role: "user", content: prompt }
+                        ],
+                        max_tokens: 100
+                    })
+                });
+
+                const data = await response.json();
+                if (data.choices && data.choices.length > 0) {
+                    const comment = data.choices[0].message.content;
+                    $('#ai-comment').html(`🤖 <b>AI Route Advisor:</b> ${comment}`);
+                }
+            } catch (e) {
+                console.error("AI Comment Error:", e);
+                $('#ai-comment').text("");
             }
         }
 
