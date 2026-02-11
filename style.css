@@ -389,3 +389,16 @@ tr:hover {
 .btn-send:hover {
     background-color: #FDD835;
 }
+
+/* 상단 <style> 태그 안에 추가 또는 수정 */
+#ai-comment {
+    margin-top: 10px;
+    padding: 10px;
+    background: #f0f8ff;
+    border-radius: 5px;
+    color: #333;
+    font-size: 14px;
+    display: none;
+    /* 아래 속성을 추가하세요 */
+    white-space: pre-wrap;
+}

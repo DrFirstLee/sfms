@@ -582,9 +582,8 @@
 
                     if (!isBatch) {
                         renderDestinationList();
-                        log(`Geocoded: ${address} -> ${destinations[index].address}`);
-                        log(`Coordinates saved: ${destinations[index].lat}, ${destinations[index].lng}`);
                     }
+                    log(`Geocoded: ${destinations[index].name} -> ${destinations[index].address}`);
                     return true;
                 } else {
                     if (!isBatch) alert(`'${address}'에 대한 검색 결과가 없습니다.`);
@@ -610,7 +609,8 @@
                 if (success) successCount++;
                 await new Promise(r => setTimeout(r, 100)); // Rate limiting
             }
-
+            // [수정 포인트] 모든 루프가 끝난 후 리스트를 다시 그려서 좌표 값을 화면에 반영합니다.
+            renderDestinationList();
             btn.disabled = false;
             btn.innerText = originalText;
             checkAllConfirmed();
@@ -830,8 +830,10 @@
             - 예상 시간: ${durMin}분
             
             위 정보를 바탕으로 사용자에게 친절하게 경로를 요약해주는 문장의 멘트를 줄바꿈과 이모지를 사용하며 가시성 좋게 작성해줘.
-            예시: "${start}에서 출발,
-            ${waypoints}를 거쳐,
+            예시: "
+            1. ${start}에서 출발,
+            2.${waypoints},
+            3. ~~ 을 거쳐,
             ${end}로 가는 최적 경로를 추천합니다!
             총 ${distKm}km 이동하며 약 ${durMin}분이 소요됩니다."
             말투는 정중하고 친절하게 해줘.
