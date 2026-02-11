@@ -309,7 +309,7 @@
                         'Authorization': `Bearer ${apiKey}`
                     },
                     body: JSON.stringify({
-                        model: "gpt-5-nano-2025-08-07",
+                        model: "gpt-4o-mini",
                         messages: [
                             {
                                 role: "system",
@@ -324,6 +324,15 @@
                 });
 
                 const data = await response.json();
+
+                if (data.error) {
+                    throw new Error(data.error.message);
+                }
+
+                if (!data.choices || data.choices.length === 0) {
+                    throw new Error("No choices returned from OpenAI.");
+                }
+
                 const content = data.choices[0].message.content;
                 log("LLM Response: " + content);
 
@@ -659,10 +668,10 @@
             }
         }
 
-        // 페이지 로드 시 .env 불러오기 시도
-        window.onload = function () {
-            loadEnv();
-        };
+        // 페이지 로드 시 .env 불러오기 시도 (사용자 요청으로 제거 - 수동 입력 모드)
+        // window.onload = function () {
+        //     loadEnv();
+        // };
 
     </script>
 </body>
