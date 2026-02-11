@@ -313,7 +313,7 @@
                         messages: [
                             {
                                 role: "system",
-                                content: "You are a location extractor. Extract a list of distinct destination names and their addresses from the user input.\n\nRules:\n1. Return ONLY a valid JSON object with a key 'destinations', which is an array of objects having 'name' and 'address' fields.\n2. If a specific address is provided, use it.\n3. If NO specific address is provided, construct the 'address' by combining the **Region/City/District + Destination Name** (e.g., instead of just 'Gangdong-gu', use 'Gangdong-gu Sangil Girls High School'). This is vital for geocoding.\n4. If no region is strictly mentioned but implied by context, use the Destination Name itself as the address."
+                                content: "You are a location extractor. Extract a list of distinct destination names and their addresses from the user input.\n\nRules:\n1. Return ONLY a valid JSON object with a key 'destinations', which is an array of objects having 'name' and 'address' fields.\n2. If a specific address is provided, use it.\n3. If NO specific address is provided, **use your internal knowledge to retrieve the actual administrative address (Road Name or Jibun Address)** for that location. For example, if the input is 'Gangdong-gu Office', return the address '25, Seongnae-ro, Gangdong-gu, Seoul'.\n4. If the exact address is unknown, fall back to combining Region + Destination Name."
                             },
                             {
                                 role: "user",
