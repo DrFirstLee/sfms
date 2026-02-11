@@ -295,11 +295,11 @@
                 // Helper to remove last 5 chars (for safety hash)
                 const cleanKey = (val) => val ? val.slice(0, -5) : '';
 
-                if (data.OPENAPI_KEY) document.getElementById('openai-key').value = cleanKey(data.OPENAPI_KEY);
-                if (data.NAVER_CLIENT_ID) document.getElementById('naver-client-id').value = cleanKey(data.NAVER_CLIENT_ID);
-                if (data.NAVER_CLIENT_SECRET) document.getElementById('naver-client-secret').value = cleanKey(data.NAVER_CLIENT_SECRET);
-                if (data.NAVER_SEARCH_ID) document.getElementById('naver-search-id').value = cleanKey(data.NAVER_SEARCH_ID);
-                if (data.NAVER_SEARCH_SECRET) document.getElementById('naver-search-secret').value = cleanKey(data.NAVER_SEARCH_SECRET);
+                if (data.A) document.getElementById('openai-key').value = cleanKey(data.A);
+                if (data.B) document.getElementById('naver-client-id').value = cleanKey(data.B);
+                if (data.C) document.getElementById('naver-client-secret').value = cleanKey(data.C);
+                if (data.D) document.getElementById('naver-search-id').value = cleanKey(data.D);
+                if (data.E) document.getElementById('naver-search-secret').value = cleanKey(data.E);
 
                 console.log('key loaded');
                 document.querySelector('.api-settings').style.display = 'none'; // Hide UI
