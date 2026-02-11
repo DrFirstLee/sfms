@@ -444,16 +444,13 @@
         }
 
         // 4. Geocoding Logic (Search API -> Geocode API)
+        // 4. Geocoding Logic (Search API -> Geocode API)
         async function searchLocation(query) {
             const searchId = document.getElementById('naver-search-id').value.trim();
             const searchSecret = document.getElementById('naver-search-secret').value.trim();
 
-            if (!searchId || !searchSecret) {
-                // Search keys missing, return null to fallback to direct geocoding
-                return null;
-            }
+            if (!searchId || !searchSecret) return null;
 
-            // Naver Search Local API (JSON)
             const targetUrl = `https://openapi.naver.com/v1/search/local.json?query=${encodeURIComponent(query)}&display=1&sort=random`;
             const proxyUrl = `/.netlify/functions/proxy?url=${encodeURIComponent(targetUrl)}`;
 
@@ -461,27 +458,36 @@
                 const response = await $.ajax({
                     url: proxyUrl,
                     method: 'GET',
-                    headers: {
-                        'X-Naver-Client-Id': searchId,
-                        'X-Naver-Client-Secret': searchSecret
-                    }
+                    dataType: 'json',
+                    headers: { 'X-Naver-Client-Id': searchId, 'X-Naver-Client-Secret': searchSecret }
                 });
 
                 if (response && response.items && response.items.length > 0) {
                     const item = response.items[0];
                     let rawAddr = item.roadAddress || item.address;
-                    // Remove HTML tags
                     let cleanAddr = rawAddr.replace(/<[^>]*>?/gm, '');
-                    // Remove floor details for better geocoding (e.g., 1층, 101호)
                     cleanAddr = cleanAddr.replace(/\s\d+층.*$/, '').replace(/\s\w+호.*$/, '').trim();
+
+                    // Parse mapx, mapy (Integers like 1271234567 => 127.1234567)
+                    let lat = null, lng = null;
+                    if (item.mapx && item.mapy) {
+                        // Naver Search API returns WGS84 scaled by 10,000,000
+                        lng = parseInt(item.mapx) / 10000000;
+                        lat = parseInt(item.mapy) / 10000000;
+                    }
 
                     return {
                         address: cleanAddr,
-                        title: item.title.replace(/<[^>]*>?/gm, '')
+                        title: item.title.replace(/<[^>]*>?/gm, ''),
+                        lat: lat,
+                        lng: lng
                     };
                 }
             } catch (e) {
                 log(`Search API Failed for ${query}: ${e.message}`);
+                if (e.responseText) {
+                    try { log("ErrResponse: " + JSON.stringify(JSON.parse(e.responseText))); } catch (xE) { }
+                }
             }
             return null;
         }
@@ -498,6 +504,25 @@
             if (searchedAddress) {
                 address = searchedAddress.address;
                 destinations[index].address = address; // Update model
+
+                // Use Coordinates from Search API directly if available (Skip Geocode API)
+                if (searchedAddress.lat && searchedAddress.lng) {
+                    destinations[index].lat = searchedAddress.lat;
+                    destinations[index].lng = searchedAddress.lng;
+                    destinations[index].confirmed = true;
+
+                    // Update UI input explicitly
+                    const listItems = document.querySelectorAll('.destination-item');
+                    if (listItems[index]) {
+                        listItems[index].querySelector('.addr-input').value = address;
+                    }
+
+                    if (!isBatch) {
+                        renderDestinationList();
+                        log(`Search API Coords Used: ${address} -> ${destinations[index].lat}, ${destinations[index].lng}`);
+                    }
+                    return true;
+                }
 
                 // Update UI input explicitly
                 const listItems = document.querySelectorAll('.destination-item');
