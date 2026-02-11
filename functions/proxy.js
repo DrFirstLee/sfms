@@ -15,6 +15,8 @@ exports.handler = async function (event, context) {
     const naverHeaders = {
         'x-ncp-apigw-api-key-id': headers['x-ncp-apigw-api-key-id'],
         'x-ncp-apigw-api-key': headers['x-ncp-apigw-api-key'],
+        'X-Naver-Client-Id': headers['x-naver-client-id'],
+        'X-Naver-Client-Secret': headers['x-naver-client-secret'],
         'Accept': 'application/json'
     };
 
