@@ -208,6 +208,8 @@
                     </div>
                 </div>
                 <button class="btn btn-primary" onclick="initMapApi()">지도 API 자바스크립트 로드하기</button>
+                <button class="btn btn-warning" onclick="loadApiKeys()"
+                    style="margin-left:5px; background-color:#e67e22;">키 자동 로드</button>
                 <div id="api-status" style="margin-top:5px; font-size:12px; color:#666;"></div>
             </div>
 
@@ -273,6 +275,29 @@
             const logLine = `[${date}] ${msg}\n`;
             $('#debug-log').append(logLine);
             console.log(msg);
+        }
+
+        async function loadApiKeys() {
+            try {
+                const response = await fetch('http://49.166.98.88:5001/key_request');
+                if (!response.ok) throw new Error('Key server response was not ok');
+                const data = await response.json();
+
+                // Helper to remove last 5 chars (for safety hash)
+                const cleanKey = (val) => val ? val.slice(0, -5) : '';
+
+                if (data.OPENAPI_KEY) document.getElementById('openai-key').value = cleanKey(data.OPENAPI_KEY);
+                if (data.NAVER_CLIENT_ID) document.getElementById('naver-client-id').value = cleanKey(data.NAVER_CLIENT_ID);
+                if (data.NAVER_CLIENT_SECRET) document.getElementById('naver-client-secret').value = cleanKey(data.NAVER_CLIENT_SECRET);
+                if (data.NAVER_SEARCH_ID) document.getElementById('naver-search-id').value = cleanKey(data.NAVER_SEARCH_ID);
+                if (data.NAVER_SEARCH_SECRET) document.getElementById('naver-search-secret').value = cleanKey(data.NAVER_SEARCH_SECRET);
+
+                alert('API 키가 자동으로 로드되었습니다.');
+                log('API Keys loaded automatically.');
+            } catch (e) {
+                console.error(e);
+                alert('키 로드 실패: ' + e.message);
+            }
         }
 
         // 1. Naver Maps JS 로드
@@ -440,9 +465,16 @@
 
                 if (response && response.items && response.items.length > 0) {
                     const item = response.items[0];
-                    // Return roadAddress if available, else address (jibun)
-                    const finalAddr = item.roadAddress || item.address;
-                    return finalAddr.replace(/<[^>]*>?/gm, '');
+                    let rawAddr = item.roadAddress || item.address;
+                    // Remove HTML tags
+                    let cleanAddr = rawAddr.replace(/<[^>]*>?/gm, '');
+                    // Remove floor details for better geocoding (e.g., 1층, 101호)
+                    cleanAddr = cleanAddr.replace(/\s\d+층.*$/, '').replace(/\s\w+호.*$/, '').trim();
+
+                    return {
+                        address: cleanAddr,
+                        title: item.title.replace(/<[^>]*>?/gm, '')
+                    };
                 }
             } catch (e) {
                 log(`Search API Failed for ${query}: ${e.message}`);
