@@ -439,8 +439,10 @@
                 });
 
                 if (response && response.items && response.items.length > 0) {
-                    // Return the first found road address (without HTML tags)
-                    return response.items[0].roadAddress.replace(/<[^>]*>?/gm, '');
+                    const item = response.items[0];
+                    // Return roadAddress if available, else address (jibun)
+                    const finalAddr = item.roadAddress || item.address;
+                    return finalAddr.replace(/<[^>]*>?/gm, '');
                 }
             } catch (e) {
                 log(`Search API Failed for ${query}: ${e.message}`);
@@ -460,11 +462,14 @@
             if (searchedAddress) {
                 address = searchedAddress;
                 destinations[index].address = address; // Update model
-                if (!isBatch) {
-                    // Update UI input immediately if single check
-                    const items = document.querySelectorAll('.addr-input');
-                    if (items[index]) items[index].value = address;
+
+                // Update UI input explicitly
+                const listItems = document.querySelectorAll('.destination-item');
+                if (listItems[index]) {
+                    const addrInput = listItems[index].querySelector('.addr-input');
+                    if (addrInput) addrInput.value = address;
                 }
+
                 log(`Search Found: ${name} -> ${address}`);
             }
 
