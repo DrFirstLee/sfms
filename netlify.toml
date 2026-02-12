@@ -1,2 +1,13 @@
 [build]
   functions = "functions"
+
+[[redirects]]
+  from = "/api/login"
+  to = "/.netlify/functions/login-proxy"
+  status = 200
+
+[[redirects]]
+  from = "/search/*"
+  to = "/.netlify/functions/proxy"
+  status = 200
+  query = {url = ":url"}
