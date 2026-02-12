@@ -16,6 +16,7 @@
                 <li onclick="showPage('info')" class="active" id="menu-info">가입정보 관리</li>
                 <li onclick="showPage('message')" id="menu-message">메시지 보내기</li>
                 <li onclick="location.href='route_optimization.html'">노선 최적화</li>
+                <li onclick="location.href='admin_page.html'" id="menu-admin" style="display: none;">임직원 관리</li>
             </ul>
             <div class="logout-area">
                 <a href="#" onclick="logout()">로그아웃</a>
@@ -156,18 +157,27 @@
             }
 
             // (선택) 서버에 토큰 유효성 검증 요청
-            /*
             try {
-                const response = await fetch('http://localhost:3000/api/verify', {
+                // Use the verify proxy to avoid Mixed Content/CORS
+                const response = await fetch('/.netlify/functions/verify-proxy', {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
+
                 if (!response.ok) throw new Error('Invalid Token');
+
+                const data = await response.json();
+
+                // 관리자 권한 확인
+                if (data.username === 'admin') {
+                    document.getElementById('menu-admin').style.display = 'block';
+                }
+
             } catch (e) {
+                console.error("Auth Check Failed:", e);
                 alert('세션이 만료되었습니다.');
                 localStorage.removeItem('authToken');
                 window.location.href = 'index.html';
             }
-            */
         })();
 
         function logout() {

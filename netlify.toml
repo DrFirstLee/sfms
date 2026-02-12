@@ -7,6 +7,11 @@
   status = 200
 
 [[redirects]]
+  from = "/api/verify"
+  to = "/.netlify/functions/verify-proxy"
+  status = 200
+
+[[redirects]]
   from = "/search/*"
   to = "/.netlify/functions/proxy"
   status = 200
