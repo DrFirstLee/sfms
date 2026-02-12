@@ -170,7 +170,7 @@
                 <li class="active">노선 최적화</li>
             </ul>
             <div class="logout-area">
-                <a href="index.html">로그아웃</a>
+                <a href="#" onclick="logout()">로그아웃</a>
             </div>
         </nav>
 
@@ -269,6 +269,21 @@
     </div>
 
     <script>
+        // --- 0. [보안] 토큰 검증 ---
+        (async function checkAuth() {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                alert('로그인이 필요합니다.');
+                window.location.href = 'index.html';
+                return;
+            }
+        })();
+
+        function logout() {
+            localStorage.removeItem('authToken');
+            window.location.href = 'index.html';
+        }
+
         // 전역 변수
         let map = null;
         let markers = [];

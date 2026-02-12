@@ -18,7 +18,7 @@
                 <li onclick="location.href='route_optimization.html'">노선 최적화</li>
             </ul>
             <div class="logout-area">
-                <a href="index.html">로그아웃</a>
+                <a href="#" onclick="logout()">로그아웃</a>
             </div>
         </nav>
 
@@ -34,7 +34,9 @@
                                 <th>기관 구분</th>
                                 <th>기관명</th>
                                 <th>담당자 직책</th>
-                                <th>지역</th>
+                                <th>담당자명</th>
+                                <th>지역(시/도)</th>
+                                <th>지역(시/군/구)</th>
                                 <th>가입일시</th>
                             </tr>
                         </thead>
@@ -51,34 +53,77 @@
                     <div class="filter-box">
                         <h3>고객 필터링</h3>
                         <div class="filter-row">
-                            <select id="filter-region" onchange="updateTargetList()">
-                                <option value="">전체 지역</option>
-                                <option value="송파">송파</option>
-                                <option value="잠실">잠실</option>
-                                <option value="서초">서초</option>
-                                <option value="서대문">서대문</option>
-                                <option value="종로">종로</option>
-                            </select>
-                            <select id="filter-type" onchange="updateTargetList()">
-                                <option value="">전체 기관</option>
-                                <option value="어린이집">어린이집</option>
-                                <option value="구청">구청</option>
-                                <option value="시설물">시설물</option>
-                            </select>
-                            <select id="filter-role" onchange="updateTargetList()">
-                                <option value="">전체 직책</option>
-                                <option value="안전담당자">안전담당자</option>
-                                <option value="원장">원장</option>
-                            </select>
+                            <!-- 1. 지역(도) 선택 -->
+                            <div class="filter-group">
+                                <label for="filter-province">지역(시/도)</label>
+                                <select id="filter-province" onchange="updateCityOptions()">
+                                    <option value="">시/도 선택</option>
+                                    <option value="서울특별시">서울특별시</option>
+                                    <option value="부산광역시">부산광역시</option>
+                                    <option value="인천광역시">인천광역시</option>
+                                    <option value="대구광역시">대구광역시</option>
+                                    <option value="광주광역시">광주광역시</option>
+                                    <option value="대전광역시">대전광역시</option>
+                                    <option value="울산광역시">울산광역시</option>
+                                </select>
+                            </div>
+
+                            <!-- 2. 지역(시군구) 선택 -->
+                            <div class="filter-group">
+                                <label for="filter-city">지역(시/군/구)</label>
+                                <select id="filter-city" onchange="updateTargetList()">
+                                    <option value="">모두</option>
+                                </select>
+                            </div>
+
+                            <!-- 3. 기관구분 선택 -->
+                            <div class="filter-group">
+                                <label for="filter-type">기관구분</label>
+                                <select id="filter-type" onchange="updateTargetList()">
+                                    <option value="">모두</option>
+                                    <option value="기타시설">기타시설</option>
+                                    <option value="노인 관련시설">노인 관련시설</option>
+                                    <option value="어린이집">어린이집</option>
+                                    <option value="요양원">요양원</option>
+                                    <option value="장애인 관련시설">장애인 관련시설</option>
+                                    <option value="지역아동센터">지역아동센터</option>
+                                </select>
+                            </div>
+
+                            <!-- 5. 직책 선택 -->
+                            <div class="filter-group">
+                                <label for="filter-role">직책</label>
+                                <select id="filter-role" onchange="updateTargetList()">
+                                    <option value="">모두</option>
+                                    <option value="기타">기타</option>
+                                    <option value="사무국장">사무국장</option>
+                                    <option value="센터장">센터장</option>
+                                    <option value="시설담당자">시설담당자</option>
+                                    <option value="시설장">시설장</option>
+                                    <option value="원장">원장</option>
+                                    <option value="주무관(주사)">주무관(주사)</option>
+                                </select>
+                            </div>
+
+                            <!-- 4. 기관명 기입 -->
+                            <div class="filter-group">
+                                <label for="filter-org-name">기관명</label>
+                                <input type="text" id="filter-org-name" placeholder="기관명 입력"
+                                    onkeyup="updateTargetList()">
+                            </div>
                         </div>
                     </div>
 
                     <div class="target-result-box">
                         <h3>
                             발송 대상 리스트
-                            <span id="target-count" class="badge">0명</span>
+                            <span id="target-count" class="badge">0명 선택</span>
                         </h3>
-                        <ul id="target-list" class="target-list">
+                        <div class="list-header" style="padding: 10px; border-bottom: 1px solid #eee;">
+                            <label><input type="checkbox" id="check-all" onclick="toggleAllCheckboxes(this)"> 전체
+                                선택</label>
+                        </div>
+                        <ul id="target-list" class="target-list" style="margin-top: 0;">
                         </ul>
                     </div>
 
@@ -101,15 +146,57 @@
     </div>
 
     <script>
+        // --- 0. [보안] 토큰 검증 ---
+        (async function checkAuth() {
+            const token = localStorage.getItem('authToken');
+            if (!token) {
+                alert('로그인이 필요합니다.');
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // (선택) 서버에 토큰 유효성 검증 요청
+            /*
+            try {
+                const response = await fetch('http://localhost:3000/api/verify', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!response.ok) throw new Error('Invalid Token');
+            } catch (e) {
+                alert('세션이 만료되었습니다.');
+                localStorage.removeItem('authToken');
+                window.location.href = 'index.html';
+            }
+            */
+        })();
+
+        function logout() {
+            localStorage.removeItem('authToken');
+            window.location.href = 'index.html';
+        }
+
         // --- 1. 데이터 정의 (하드코딩) ---
         const mockData = [
-            { no: 1, type: '어린이집', name: '햇살어린이집', role: '원장', region: '송파', date: '2024-01-10 10:00' },
-            { no: 2, type: '구청', name: '송파구청', role: '안전담당자', region: '송파', date: '2024-01-12 14:30' },
-            { no: 3, type: '시설물', name: '올림픽공원 관리소', role: '안전담당자', region: '잠실', date: '2024-02-01 09:00' },
-            { no: 4, type: '어린이집', name: '반포어린이집', role: '원장', region: '서초', date: '2024-02-15 11:20' },
-            { no: 5, type: '구청', name: '서대문구청', role: '안전담당자', region: '서대문', date: '2024-03-05 16:45' },
-            { no: 6, type: '시설물', name: '광화문 시설관리공단', role: '안전담당자', region: '종로', date: '2024-03-20 13:10' },
+            { no: 1, type: '어린이집', orgName: '해바라기어린이집', personName: '김철수', role: '원장', province: '서울특별시', city: '송파구', date: '2024-01-10 10:00' },
+            { no: 2, type: '기타시설', orgName: '송파구청', personName: '이영희', role: '주무관(주사)', province: '서울특별시', city: '송파구', date: '2024-01-12 14:30' },
+            { no: 3, type: '노인 관련시설', orgName: '행복한 요양원', personName: '박민수', role: '시설장', province: '서울특별시', city: '강동구', date: '2024-02-01 09:00' },
+            { no: 4, type: '어린이집', orgName: '반포어린이집', personName: '최지원', role: '원장', province: '서울특별시', city: '서초구', date: '2024-02-15 11:20' },
+            { no: 5, type: '장애인 관련시설', orgName: '서초 장애인 복지관', personName: '정수현', role: '사무국장', province: '서울특별시', city: '서초구', date: '2024-03-05 16:45' },
+            { no: 6, type: '지역아동센터', orgName: '강동 지역아동센터', personName: '강동원', role: '센터장', province: '서울특별시', city: '강동구', date: '2024-03-20 13:10' },
+            { no: 7, type: '기타시설', orgName: '올림픽공원 관리소', personName: '홍길동', role: '시설담당자', province: '서울특별시', city: '송파구', date: '2024-03-25 10:00' },
+            { no: 8, type: '어린이집', orgName: '잠실어린이집', personName: '김영희', role: '원장', province: '서울특별시', city: '송파구', date: '2024-04-01 09:30' },
         ];
+
+        // --- 1-1. 지역 데이터 (시군구) ---
+        const regionData = {
+            "서울특별시": ["강남구", "강동구", "강북구", "강서구", "관악구", "광진구", "구로구", "금천구", "노원구", "도봉구", "동대문구", "동작구", "마포구", "서대문구", "서초구", "성동구", "성북구", "송파구", "양천구", "영등포구", "용산구", "은평구", "종로구", "중구", "중랑구"],
+            "부산광역시": ["강서구", "금정구", "기장군", "남구", "동구", "동래구", "부산진구", "북구", "사상구", "사하구", "서구", "수영구", "연제구", "영도구", "중구", "해운대구"],
+            "인천광역시": ["강화군", "계양구", "남동구", "동구", "미추홀구", "부평구", "서구", "연수구", "옹진군", "중구"],
+            "대구광역시": ["군위군", "남구", "달서구", "달성군", "동구", "북구", "서구", "수성구", "중구"],
+            "광주광역시": ["광산구", "남구", "동구", "북구", "서구"],
+            "대전광역시": ["대덕구", "동구", "서구", "유성구", "중구"],
+            "울산광역시": ["남구", "동구", "북구", "울주군", "중구"]
+        };
 
         // --- 2. 초기화 및 테이블 렌더링 ---
         const tableBody = document.getElementById('userTableBody');
@@ -119,9 +206,10 @@
             tr.innerHTML = `
                 <td>${user.no}</td>
                 <td>${user.type}</td>
-                <td>${user.name}</td>
+                <td>${user.orgName}</td>
                 <td>${user.role}</td>
-                <td>${user.region}</td>
+                <td>${user.personName}</td>
+                <td>${user.province} ${user.city}</td>
                 <td>${user.date}</td>
             `;
             tableBody.appendChild(tr);
@@ -144,50 +232,99 @@
         }
 
         // --- 4. [NEW] 대상 리스트 업데이트 함수 ---
+        // 4-1. 시군구 옵션 업데이트
+        function updateCityOptions() {
+            const provinceVal = document.getElementById('filter-province').value;
+            const citySelect = document.getElementById('filter-city');
+
+            // 기존 옵션 제거
+            citySelect.innerHTML = '<option value="">모두</option>';
+
+            if (provinceVal && regionData[provinceVal]) {
+                regionData[provinceVal].forEach(city => {
+                    const option = document.createElement('option');
+                    option.value = city;
+                    option.textContent = city;
+                    citySelect.appendChild(option);
+                });
+            }
+            // 지역(도)가 변경되면 리스트도 업데이트 (시군구는 초기화 상태로 검색)
+            updateTargetList();
+        }
+
+        // 4-2. 필터링 및 리스트 업데이트
         function updateTargetList() {
-            const regionVal = document.getElementById('filter-region').value;
+            const provinceVal = document.getElementById('filter-province').value;
+            const cityVal = document.getElementById('filter-city').value;
             const typeVal = document.getElementById('filter-type').value;
+            const orgNameVal = document.getElementById('filter-org-name').value.toLowerCase();
             const roleVal = document.getElementById('filter-role').value;
 
             // 필터 로직
             const filteredData = mockData.filter(item => {
-                const matchRegion = regionVal === "" || item.region === regionVal;
+                const matchProvince = provinceVal === "" || item.province === provinceVal;
+                const matchCity = cityVal === "" || item.city === cityVal;
                 const matchType = typeVal === "" || item.type === typeVal;
+                const matchOrgName = orgNameVal === "" || item.orgName.toLowerCase().includes(orgNameVal);
                 const matchRole = roleVal === "" || item.role === roleVal;
-                return matchRegion && matchType && matchRole;
+
+                return matchProvince && matchCity && matchType && matchOrgName && matchRole;
             });
 
             // UI 업데이트
             const listEl = document.getElementById('target-list');
             const countEl = document.getElementById('target-count');
+            const checkAllEl = document.getElementById('check-all');
 
             listEl.innerHTML = ""; // 초기화
-            countEl.textContent = `${filteredData.length}명`;
+            checkAllEl.checked = false; // "전체 선택" 초기화
 
             if (filteredData.length === 0) {
-                listEl.innerHTML = "<li class='no-data'>조건에 맞는 대상이 없습니다.</li>";
+                listEl.innerHTML = "<li class='no-data' style='text-align:center;'>조건에 맞는 대상이 없습니다.</li>";
+                updateSelectedCount();
                 return;
             }
 
             filteredData.forEach(item => {
                 const li = document.createElement('li');
+                li.style.display = 'flex';
+                li.style.alignItems = 'center';
+
                 li.innerHTML = `
-                    <span class="tag tag-region">${item.region}</span>
-                    <span class="tag tag-type">${item.type}</span>
-                    <strong>${item.name}</strong> 
-                    <span class="text-gray">(${item.role})</span>
+                    <input type="checkbox" class="target-checkbox" value="${item.no}" onchange="updateSelectedCount()" style="margin-right: 10px;">
+                    <div style="flex: 1;">
+                        <span class="tag tag-region">${item.city}</span>
+                        <span class="tag tag-type">${item.type}</span>
+                        <strong>${item.orgName}</strong> 
+                        <span class="text-gray">(${item.personName} / ${item.role})</span>
+                    </div>
                 `;
                 listEl.appendChild(li);
             });
+            updateSelectedCount();
         }
 
+        // 4-3. [NEW] 체크박스 관련 함수
+        function toggleAllCheckboxes(source) {
+            const checkboxes = document.querySelectorAll('.target-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = source.checked;
+            });
+            updateSelectedCount();
+        }
+
+        function updateSelectedCount() {
+            const checkboxes = document.querySelectorAll('.target-checkbox:checked');
+            const countEl = document.getElementById('target-count');
+            countEl.textContent = `${checkboxes.length}명 선택`;
+        }
         // --- 5. 메시지 발송 함수 ---
         function sendMessage() {
             const title = document.getElementById('msg-title').value;
-            const countText = document.getElementById('target-count').textContent;
+            const checkboxes = document.querySelectorAll('.target-checkbox:checked');
 
-            if (countText === "0명") {
-                alert("발송 대상이 없습니다. 필터 조건을 확인해주세요.");
+            if (checkboxes.length === 0) {
+                alert("발송 대상을 선택해주세요.");
                 return;
             }
 
@@ -196,7 +333,7 @@
                 return;
             }
 
-            alert(`[발송 성공]\n총 ${countText}에게 메시지를 전송했습니다.\n제목: ${title}`);
+            alert(`[발송 성공]\n총 ${checkboxes.length}명에게 메시지를 전송했습니다.\n제목: ${title}`);
         }
     </script>
 </body>
